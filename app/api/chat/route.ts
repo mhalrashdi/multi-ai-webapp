@@ -25,7 +25,12 @@ export async function POST(req: Request) {
   });
 
   const gptText = gpt.choices[0].message.content;
-  const claudeText = claude.content[0].text;
+  const claudeText =
+  claude.content
+    .filter((block) => block.type === "text")
+    .map((block: any) => block.text)
+    .join("\n") || "";
+
 
   const judge = await openai.chat.completions.create({
     model: "gpt-4o-mini",
