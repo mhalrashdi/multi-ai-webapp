@@ -17,7 +17,14 @@ export default function Home() {
     });
 
     const data = await res.json();
-    setResponse(data.result);
+console.log("API RESPONSE:", data);
+
+if (data.error) {
+  setResponse("Error: " + data.error);
+} else {
+  setResponse(data.result);
+}
+
     setLoading(false);
   };
 
