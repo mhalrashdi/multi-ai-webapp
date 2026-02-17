@@ -1,39 +1,36 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+const genAI = new GoogleGenerativeAI(
+  process.env.GEMINI_API_KEY!
+);
 
 export async function POST(req: Request) {
   try {
     const { message } = await req.json();
 
-    const [gpt, claude] = await Promise.all([
+    // Run GPT and Gemini in parallel
+    const [gpt, gemini] = await Promise.all([
       openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: message }],
       }),
-      anthropic.messages.create({
-        model: "claude-3-haiku-20240307",
-        max_tokens: 500,
-        messages: [{ role: "user", content: message }],
-      }),
+      genAI
+        .getGenerativeModel({ model: "gemini-1.5-flash" })
+        .generateContent(message),
     ]);
 
     const gptText = gpt.choices[0].message.content;
 
-    const claudeText =
-      claude.content
-        .filter((block) => block.type === "text")
-        .map((block: any) => block.text)
-        .join("\n") || "";
+    const geminiText =
+      gemini.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
+    // Judge with GPT
     const judge = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -48,7 +45,7 @@ export async function POST(req: Request) {
 
 Answer 1: ${gptText}
 
-Answer 2: ${claudeText}`,
+Answer 2: ${geminiText}`,
         },
       ],
     });
