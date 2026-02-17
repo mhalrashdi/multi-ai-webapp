@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         messages: [{ role: "user", content: message }],
       }),
       genAI
-        .getGenerativeModel({ model: "gemini-1.5-flash" })
+        .getGenerativeModel({ model: "gemini-1.5-pro" })
         .generateContent(message),
     ]);
 
