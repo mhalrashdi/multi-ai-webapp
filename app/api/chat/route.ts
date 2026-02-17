@@ -15,22 +15,36 @@ export async function POST(req: Request) {
     const { message } = await req.json();
 
     // Run GPT and Gemini in parallel
-    const [gpt, gemini] = await Promise.all([
+    const [gptResponse, geminiResponse] = await Promise.all([
       openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: message }],
       }),
-      genAI
-        .getGenerativeModel({ model: "gemini-1.5-pro" })
-        .generateContent(message),
+
+      (async () => {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash-latest",
+        });
+
+        const result = await model.generateContent({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: message }],
+            },
+          ],
+        });
+
+        return (
+          result.response.candidates?.[0]?.content?.parts?.[0]?.text || ""
+        );
+      })(),
     ]);
 
-    const gptText = gpt.choices[0].message.content;
+    const gptText = gptResponse.choices[0].message.content;
+    const geminiText = geminiResponse;
 
-    const geminiText =
-      gemini.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    // Judge with GPT
+    // Judge using GPT
     const judge = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -57,7 +71,11 @@ Answer 2: ${geminiText}`,
     console.error("API ERROR:", error);
 
     return NextResponse.json(
-      { error: error.message || "Something went wrong" },
+      {
+        error:
+          error?.message ||
+          "Something went wrong while generating the response.",
+      },
       { status: 500 }
     );
   }
